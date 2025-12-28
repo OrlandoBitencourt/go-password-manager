@@ -1,5 +1,6 @@
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 # Go Password Manager
 
 A secure, encrypted password manager with **multiple frontends** (HTTP API, Web UI, and Telegram Bot) built in Go.
@@ -447,6 +448,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 =======
 =======
 >>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 # Go Password Manager
 
 A secure, encrypted password manager with **multiple frontends** (HTTP API, Web UI, and Telegram Bot) built in Go.
@@ -892,6 +895,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Inspired by KeePass and 1Password
 - Uses industry-standard cryptography (AES-256-GCM, Argon2id)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
