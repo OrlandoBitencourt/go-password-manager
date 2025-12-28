@@ -1,0 +1,40 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+password-manager
+telegram-bot
+server
+
+# Vault files (sensitive data)
+vaults/
+*.vault
+
+# Environment files (contain secrets)
+.env
+.env.local
+.env.*.local
+
+# Go build artifacts
+*.test
+*.out
+bin/
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+.claude/settings.local.json
+ADR-0001-password-manager.md
+ADR-0002-telegram-bot-frontend.md

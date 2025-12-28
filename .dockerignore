@@ -1,0 +1,6 @@
+.git
+.gitignore
+README.md
+ADR-0001-password-manager.md
+vaults/
+*.md

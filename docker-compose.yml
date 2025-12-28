@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: password-manager-backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./vaults:/root/vaults
+    environment:
+      - PORT=8080
+      - VAULT_DIR=/root/vaults
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: password-manager-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8080
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.telegram
+    container_name: telegram-bot
+    volumes:
+      - ./vaults:/root/vaults
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - VAULT_DIR=/root/vaults
+      - SESSION_TTL=5m
+      - EPHEMERAL_MESSAGE_TTL=60s
+      - RATE_LIMIT_REQUESTS=10
+      - RATE_LIMIT_WINDOW=1m
+      - PASSWORD_RETRIEVAL_MAX=5
+      - PASSWORD_RETRIEVAL_WINDOW=1m
+      - ALLOWED_USER_IDS=${ALLOWED_USER_IDS:-}
+    restart: unless-stopped
+    depends_on:
+      - backend
