@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -18,15 +18,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o password-manager 
 # Runtime stage
 FROM alpine:latest
 
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates wget
 
 WORKDIR /root/
 
 # Copy the binary from builder
 COPY --from=builder /app/password-manager .
-
-# Copy web frontend
-COPY web /root/web
 
 # Create vaults directory
 RUN mkdir -p /root/vaults
@@ -37,7 +34,6 @@ EXPOSE 8080
 # Set environment variables
 ENV PORT=8080
 ENV VAULT_DIR=/root/vaults
-ENV WEB_DIR=/root/web
 
 # Run the application
 CMD ["./password-manager"]

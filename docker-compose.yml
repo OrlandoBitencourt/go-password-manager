@@ -1,8 +1,8 @@
-version: '3.8'
-
 services:
   backend:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: password-manager-backend
     ports:
       - "8080:8080"
@@ -11,7 +11,37 @@ services:
     environment:
       - PORT=8080
       - VAULT_DIR=/root/vaults
-    restart: unless-stopped
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.telegram
+    container_name: password-manager-telegram-bot
+    env_file:
+      - .env
+    volumes:
+      - ./vaults:/root/vaults
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - VAULT_DIR=/root/vaults
+      - SESSION_TTL=${SESSION_TTL:-5m}
+      - EPHEMERAL_MESSAGE_TTL=${EPHEMERAL_MESSAGE_TTL:-60s}
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-10}
+      - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-1m}
+      - PASSWORD_RETRIEVAL_MAX=${PASSWORD_RETRIEVAL_MAX:-5}
+      - PASSWORD_RETRIEVAL_WINDOW=${PASSWORD_RETRIEVAL_WINDOW:-1m}
+      - ALLOWED_USER_IDS=${ALLOWED_USER_IDS:-}
+    restart: always
+    depends_on:
+      backend:
+        condition: service_healthy
 
   frontend:
     build:
@@ -21,28 +51,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8080
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+    restart: always
     depends_on:
-      - backend
-    restart: unless-stopped
-
-  telegram-bot:
-    build:
-      context: .
-      dockerfile: Dockerfile.telegram
-    container_name: telegram-bot
-    volumes:
-      - ./vaults:/root/vaults
-    environment:
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - VAULT_DIR=/root/vaults
-      - SESSION_TTL=5m
-      - EPHEMERAL_MESSAGE_TTL=60s
-      - RATE_LIMIT_REQUESTS=10
-      - RATE_LIMIT_WINDOW=1m
-      - PASSWORD_RETRIEVAL_MAX=5
-      - PASSWORD_RETRIEVAL_WINDOW=1m
-      - ALLOWED_USER_IDS=${ALLOWED_USER_IDS:-}
-    restart: unless-stopped
-    depends_on:
-      - backend
+      backend:
+        condition: service_healthy
