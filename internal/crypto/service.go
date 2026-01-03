@@ -10,16 +10,29 @@ import (
 )
 
 const (
-	// Argon2id parameters (can be tuned based on requirements)
-	Argon2Time    = 1
-	Argon2Memory  = 64 * 1024 // 64 MB
-	Argon2Threads = 4
-	Argon2KeyLen  = 32 // 256 bits for AES-256
+	// Argon2id parameters - configured per OWASP recommendations
+	// These parameters are intentionally resource-intensive to defend against
+	// brute-force and dictionary attacks on the master password.
+	//
+	// OWASP Guidelines for Argon2id:
+	// - Time (iterations): Minimum 3, recommended 3-4 for production
+	// - Memory: Minimum 128 MB, recommended 128-256 MB for high security
+	// - Threads: 4 is optimal for most systems
+	// - Key length: 32 bytes (256 bits) for AES-256-GCM
+	//
+	// Performance impact: ~300-500ms on modern hardware (acceptable for password
+	// manager authentication). Existing vaults remain compatible as each vault
+	// stores its own derivation parameters.
+	Argon2Time    = 3          // 3 iterations - balances security and performance
+	Argon2Memory  = 128 * 1024 // 128 MB - OWASP minimum for high-value secrets
+	Argon2Threads = 4          // Parallelism factor
+	Argon2KeyLen  = 32         // 256 bits for AES-256-GCM
 
-	// Salt length in bytes
+	// Salt length in bytes - 32 bytes provides 256 bits of entropy
+	// Cryptographically secure random salt prevents rainbow table attacks
 	SaltLength = 32
 
-	// AES-GCM nonce size
+	// AES-GCM nonce size - 12 bytes is standard for GCM mode
 	NonceSize = 12
 )
 

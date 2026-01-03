@@ -10,18 +10,23 @@ import (
 
 // Handler handles HTTP requests for the password manager API
 type Handler struct {
-	service *application.VaultService
+	service     *application.VaultService
+	csrfManager *CSRFManager
 }
 
 // NewHandler creates a new HTTP handler
 func NewHandler(service *application.VaultService) *Handler {
 	return &Handler{
-		service: service,
+		service:     service,
+		csrfManager: NewCSRFManager(),
 	}
 }
 
 // RegisterRoutes sets up the HTTP routes
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
+	// CSRF token endpoint (no CSRF protection needed)
+	mux.HandleFunc("/api/csrf-token", h.handleCSRFToken)
+
 	mux.HandleFunc("/api/vaults", h.handleVaults)
 	mux.HandleFunc("/api/vaults/create", h.handleCreateVault)
 	mux.HandleFunc("/api/vaults/unlock", h.handleUnlockVault)
@@ -32,6 +37,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/records/update", h.handleUpdateRecord)
 	mux.HandleFunc("/api/records/delete", h.handleDeleteRecord)
 	mux.HandleFunc("/health", h.handleHealth)
+}
+
+// GetCSRFMiddleware returns the CSRF middleware for this handler
+func (h *Handler) GetCSRFMiddleware() func(http.Handler) http.Handler {
+	return CSRFMiddleware(h.csrfManager)
 }
 
 // CreateVaultRequest represents a request to create a new vault
@@ -87,6 +97,34 @@ type ErrorResponse struct {
 // SuccessResponse represents a success response
 type SuccessResponse struct {
 	Message string `json:"message"`
+}
+
+// handleCSRFToken generates and returns a new CSRF token
+func (h *Handler) handleCSRFToken(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	token, err := h.csrfManager.generateToken()
+	if err != nil {
+		h.sendError(w, "Failed to generate CSRF token", http.StatusInternalServerError)
+		return
+	}
+
+	// Set token in cookie (HttpOnly for security)
+	http.SetCookie(w, &http.Cookie{
+		Name:     CSRFCookieName,
+		Value:    token,
+		Path:     "/",
+		MaxAge:   int(CSRFTokenTTL.Seconds()),
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	// Also return in response body for client-side storage
+	h.sendJSON(w, map[string]string{"token": token})
 }
 
 // handleHealth returns the health status of the service

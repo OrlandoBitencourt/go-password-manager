@@ -146,9 +146,9 @@ func (s *VaultService) LockVault(ctx context.Context, name string) error {
 // AddPasswordRecord adds a new password record to the vault
 func (s *VaultService) AddPasswordRecord(ctx context.Context, vaultName, recordName, username, password string) error {
 	s.mu.Lock()
-	sess, exists := s.sessions[vaultName]
-	s.mu.Unlock()
+	defer s.mu.Unlock()
 
+	sess, exists := s.sessions[vaultName]
 	if !exists {
 		return domain.ErrVaultNotFound
 	}
@@ -171,9 +171,7 @@ func (s *VaultService) AddPasswordRecord(ctx context.Context, vaultName, recordN
 	}
 
 	// Add to vault
-	s.mu.Lock()
 	sess.vault.Records = append(sess.vault.Records, record)
-	s.mu.Unlock()
 
 	// Save to disk
 	if err := s.saveVault(ctx, vaultName, sess); err != nil {
@@ -186,16 +184,18 @@ func (s *VaultService) AddPasswordRecord(ctx context.Context, vaultName, recordN
 // GetPasswordRecord retrieves a password record by name
 func (s *VaultService) GetPasswordRecord(ctx context.Context, vaultName, recordName string) (*domain.PasswordRecord, error) {
 	s.mu.RLock()
-	sess, exists := s.sessions[vaultName]
-	s.mu.RUnlock()
+	defer s.mu.RUnlock()
 
+	sess, exists := s.sessions[vaultName]
 	if !exists {
 		return nil, domain.ErrVaultNotFound
 	}
 
 	for _, record := range sess.vault.Records {
 		if record.Name == recordName {
-			return &record, nil
+			// Return a copy to prevent external modification
+			recordCopy := record
+			return &recordCopy, nil
 		}
 	}
 
@@ -205,29 +205,31 @@ func (s *VaultService) GetPasswordRecord(ctx context.Context, vaultName, recordN
 // ListPasswordRecords returns all password records in the vault
 func (s *VaultService) ListPasswordRecords(ctx context.Context, vaultName string) ([]domain.PasswordRecord, error) {
 	s.mu.RLock()
-	sess, exists := s.sessions[vaultName]
-	s.mu.RUnlock()
+	defer s.mu.RUnlock()
 
+	sess, exists := s.sessions[vaultName]
 	if !exists {
 		return nil, domain.ErrVaultNotFound
 	}
 
-	return sess.vault.Records, nil
+	// Return a deep copy to prevent external modification
+	records := make([]domain.PasswordRecord, len(sess.vault.Records))
+	copy(records, sess.vault.Records)
+	return records, nil
 }
 
 // UpdatePasswordRecord updates an existing password record
 func (s *VaultService) UpdatePasswordRecord(ctx context.Context, vaultName, recordName, username, password string) error {
 	s.mu.Lock()
-	sess, exists := s.sessions[vaultName]
-	s.mu.Unlock()
+	defer s.mu.Unlock()
 
+	sess, exists := s.sessions[vaultName]
 	if !exists {
 		return domain.ErrVaultNotFound
 	}
 
 	// Find and update record
 	found := false
-	s.mu.Lock()
 	for i := range sess.vault.Records {
 		if sess.vault.Records[i].Name == recordName {
 			if username != "" {
@@ -241,7 +243,6 @@ func (s *VaultService) UpdatePasswordRecord(ctx context.Context, vaultName, reco
 			break
 		}
 	}
-	s.mu.Unlock()
 
 	if !found {
 		return domain.ErrRecordNotFound
@@ -258,16 +259,15 @@ func (s *VaultService) UpdatePasswordRecord(ctx context.Context, vaultName, reco
 // DeletePasswordRecord removes a password record from the vault
 func (s *VaultService) DeletePasswordRecord(ctx context.Context, vaultName, recordName string) error {
 	s.mu.Lock()
-	sess, exists := s.sessions[vaultName]
-	s.mu.Unlock()
+	defer s.mu.Unlock()
 
+	sess, exists := s.sessions[vaultName]
 	if !exists {
 		return domain.ErrVaultNotFound
 	}
 
 	// Find and delete record
 	found := false
-	s.mu.Lock()
 	for i, record := range sess.vault.Records {
 		if record.Name == recordName {
 			sess.vault.Records = append(sess.vault.Records[:i], sess.vault.Records[i+1:]...)
@@ -275,7 +275,6 @@ func (s *VaultService) DeletePasswordRecord(ctx context.Context, vaultName, reco
 			break
 		}
 	}
-	s.mu.Unlock()
 
 	if !found {
 		return domain.ErrRecordNotFound
