@@ -5,15 +5,18 @@ services:
       dockerfile: Dockerfile
     container_name: password-manager-backend
     ports:
-      - "8080:8080"
+      - "19080:19080"
     volumes:
       - ./vaults:/root/vaults
     environment:
-      - PORT=8080
+      - SERVER_PORT=19080
+      - SERVER_ADDR=0.0.0.0
       - VAULT_DIR=/root/vaults
+      - ENABLE_TLS=false  # Set to true for HTTPS (requires valid certs or will use self-signed)
+      - WEB_DIR=/root/web
     restart: always
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health", "||", "exit", "1"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:19080/health", "||", "exit", "1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -49,9 +52,9 @@ services:
       dockerfile: Dockerfile
     container_name: password-manager-frontend
     ports:
-      - "3000:3000"
+      - "13000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8080
+      - NEXT_PUBLIC_API_URL=http://localhost:19080
     restart: always
     depends_on:
       backend:
